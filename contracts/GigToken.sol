@@ -42,16 +42,4 @@ contract GigToken is ERC1155, Ownable {
         _mint(gigWorker, moderatorId, 1, "");
         moderator[gigWorker][moderatorId] = tokenUri;
     }
-
-    function depositToken(address gigWorker, uint256 amount) external {
-        require(balanceOf(gigWorker, 0) < amount, "Insufficient funds");
-        deposit[gigWorker] += amount;
-        _safeTransferFrom(gigWorker, msg.sender, 0, amount, "");
-    }
-
-    function withdrawDeposit(address gigWorker, uint256 amount) external {
-        require(deposit[gigWorker] >= amount, "Insufficient funds");
-        deposit[gigWorker] -= amount;
-        _safeTransferFrom(msg.sender, gigWorker, 0, amount, "");
-    }
 }

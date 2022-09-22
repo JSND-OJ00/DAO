@@ -3,14 +3,15 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "./GigToken.sol";
-// import "https://github.com/MyAccount/ContractRepository/Contract.sol";
 
-error NotModerator();
+// import "https://github.com/MyAccount/ContractRepository/Contract.sol";
 
 contract DAO is ERC1155Holder {
     GigToken gigToken;
     address public owner;
     uint256 proposalCount;
+    uint256 votingPeriod;
+    int quorumVariable;
     mapping(uint256 => proposal) public Proposals;
 
     constructor() {
@@ -45,7 +46,8 @@ contract DAO is ERC1155Holder {
     );
 
     event proposalPassed(uint256 id, bool passed);
-    // event proposalNotPassed(uint256 id, bool notPassed);
+
+    event quorumNotReached(uint256 id);
 
     modifier gigWorkerOnly(address gigWorker) {
         require(gigToken.balanceOf(gigWorker, 0) >= 0, "Gig Workers Only");
@@ -53,28 +55,34 @@ contract DAO is ERC1155Holder {
     }
 
     modifier moderatorOnly(address gigWorker, uint256 moderatorId) {
-        if (gigToken.balanceOf(gigWorker, moderatorId) != 1) {
-            revert NotModerator();
-        }
+        require(
+            gigToken.balanceOf(gigWorker, moderatorId) == 1,
+            "Moderator Only"
+        );
         _;
     }
 
-    function getQuorum() public view returns (uint256) {
-        return gigToken.gigWorkerCount() / 2;
+    function setVotingPeriod(uint256 _votingPeriod) public {
+        votingPeriod = _votingPeriod;
+    }
+
+    function setQuorumVari(int _quorumVariable) public {
+        quorumVariable = _quorumVariable;
     }
 
     function createProposal(
         address gigWorker,
         uint256 moderatorId,
-        uint256 deposit,
         string memory _description
     ) public moderatorOnly(gigWorker, moderatorId) {
         proposal storage _Proposal = Proposals[proposalCount];
         _Proposal.id = proposalCount;
         _Proposal.proposer = gigWorker;
         _Proposal.description = _description;
-        _Proposal.deadline = block.number + 100;
-        _Proposal.quorum = getQuorum();
+        _Proposal.deadline = block.number + votingPeriod;
+        _Proposal.quorum = uint256(
+            int(gigToken.gigWorkerCount()) * quorumVariable
+        );
 
         emit newProposal(
             proposalCount,
@@ -83,8 +91,6 @@ contract DAO is ERC1155Holder {
             gigWorker
         );
         proposalCount++;
-
-        gigToken.depositToken(gigWorker, deposit);
     }
 
     function voteOnProposal(
@@ -126,17 +132,15 @@ contract DAO is ERC1155Holder {
             block.number > Proposals[proposalId].deadline,
             "Voting is not over"
         );
-
         proposal storage _proposal = Proposals[proposalId];
-
-        if (_proposal.quorum >= _proposal.votesFor) {
+        if (_proposal.quorum >= _proposal.votesFor + _proposal.votesAgainst) {
+            emit quorumNotReached(proposalId);
+        } else if (_proposal.votesFor > _proposal.votesAgainst) {
             _proposal.passed = true;
             emit proposalPassed(proposalId, _proposal.passed);
-            // deposit 돌려주기 + 보상
+        } else {
+            _proposal.passed = false;
+            emit proposalPassed(proposalId, _proposal.passed);
         }
-
-        // 정족수를 넘지 못한 경우
-        // emit poroposalNotPassed
-        // deposit 조금 차감하고 돌려주기
     }
 }
