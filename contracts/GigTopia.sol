@@ -6,12 +6,7 @@ import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 
-contract GigTopia is
-    Governor,
-    GovernorCountingSimple,
-    GovernorVotes,
-    GovernorVotesQuorumFraction
-{
+contract GigTopia is Governor, GovernorCountingSimple, GovernorVotes, GovernorVotesQuorumFraction {
     constructor(IVotes _token)
         Governor("GigTopia")
         GovernorVotes(_token)
@@ -41,30 +36,17 @@ contract GigTopia is
         return super.quorum(blockNumber);
     }
 
-    function getProposalId(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
-    ) public pure returns (uint256) {
-        return
-            uint256(
-                keccak256(
-                    abi.encode(
-                        targets,
-                        values,
-                        calldatas,
-                        keccak256(bytes(description))
-                    )
-                )
-            );
+    function getProposalId(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string memory description)
+        public
+        pure returns(uint256) {
+        return uint256(keccak256(abi.encode(targets, values, calldatas, keccak256(bytes(description)))));
     }
 
-    function getDescriptionHash(string memory description)
-        public
-        pure
-        returns (bytes32)
-    {
+    function getDescriptionHash(string memory description) public pure returns(bytes32) {
         return keccak256(bytes(description));
+    }
+
+    function castVote(uint256 proposalId, address _voter, uint8 support) public returns (uint256) {
+        return _castVote(proposalId, _voter, support, "");
     }
 }
